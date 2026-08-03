@@ -27,6 +27,19 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('overview');
   const [loadingConfig, setLoadingConfig] = useState<boolean>(true);
 
+  const pageTitleMap: Record<NavTab, string> = {
+    overview: 'Overview | Dental Clinic Admin',
+    appointments: 'Appointments | Dental Clinic Admin',
+    services: 'Services | Dental Clinic Admin',
+    doctors: 'Doctors Roster | Dental Clinic Admin',
+    settings: 'Clinic Settings | Dental Clinic Admin',
+    apidocs: 'API Connectors | Dental Clinic Admin',
+  };
+
+  useEffect(() => {
+    document.title = user ? pageTitleMap[activeTab] : 'Login | Dental Clinic Admin';
+  }, [activeTab, user]);
+
   // Clinic Data State
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
