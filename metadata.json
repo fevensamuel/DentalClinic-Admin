@@ -1,0 +1,6 @@
+{
+  "name": "Dental Clinic",
+  "description": "Comprehensive Dental Clinic Admin Dashboard for managing appointments, service catalog, doctor roster, and clinic settings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
