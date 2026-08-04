@@ -409,11 +409,11 @@ app.put('/api/admin/appointments/:id/status', authenticateToken, (req: Request, 
 });
 
 // Services CRUD
-app.get('/api/admin/services', authenticateToken, (req: Request, res: Response) => {
+app.get('/api/services', authenticateToken, (req: Request, res: Response) => {
   return res.json(services);
 });
 
-app.post('/api/admin/services', authenticateToken, (req: Request, res: Response) => {
+app.post('/api/services', authenticateToken, (req: Request, res: Response) => {
   const { title, category, duration, price, promotionActive, discountPercent, description } = req.body;
 
   if (!title || price === undefined) {

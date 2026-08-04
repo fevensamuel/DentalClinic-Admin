@@ -16,7 +16,7 @@ import {
 import { DEPLOYED_BACKEND_URL, getApiBaseUrl, setBackendUrl } from '../lib/api';
 
 interface EndpointDoc {
-  category: 'Auth' | 'Admin' | 'Public Website';
+  category: 'Auth' | 'Admin' | 'Public';
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   path: string;
   authRequired: boolean;
@@ -26,390 +26,238 @@ interface EndpointDoc {
 }
 
 const endpoints: EndpointDoc[] = [
-  // Public Website Endpoints
+  // ==========================================
+  // PUBLIC ENDPOINTS
+  // ==========================================
   {
-    category: 'Public Website',
+    category: 'Public',
     method: 'GET',
-    path: '/api/public/doctors',
+    path: '/api/doctors',
     authRequired: false,
-    description: 'Fetches doctors roster for public patient website (filtered to featured doctors if query parameter ?featured=true is passed).',
-    responsePayload: JSON.stringify(
-      [
-        {
-          id: 'doc-1',
-          name: 'Dr. Sarah Jenkins, DDS',
-          specialty: 'Cosmetic Dentistry & Veneers',
-          bio: 'Lead cosmetic specialist with over 14 years of experience.',
-          avatar: '',
-          email: 's.jenkins@brightsmile.com',
-          phone: '(555) 234-8901',
-          isFeatured: true,
-        },
-        {
-          id: 'doc-2',
-          name: 'Dr. Marcus Vance, DMD',
-          specialty: 'Orthodontics & Invisalign',
-          bio: 'Board-certified orthodontist specializing in clear aligners.',
-          avatar: '',
-          email: 'm.vance@brightsmile.com',
-          phone: '(555) 345-9012',
-          isFeatured: true,
-        },
-      ],
-      null,
-      2
-    ),
+    description: 'Fetches all doctors. Use ?featured=true to get only featured doctors.',
   },
   {
-    category: 'Public Website',
+    category: 'Public',
     method: 'GET',
-    path: '/api/public/services',
+    path: '/api/services',
     authRequired: false,
-    description: 'Retrieves all available dental services and ETB pricing for public patient booking dropdowns.',
-    responsePayload: JSON.stringify(
-      [
-        {
-          id: 'srv-1',
-          title: 'Comprehensive Oral Exam & Cleaning',
-          category: 'Preventive Care',
-          duration: 45,
-          price: 1500,
-          promotionActive: true,
-          discountPercent: 15,
-          description: 'Full digital X-rays, ultrasonic scaling, polish, and consultation.',
-        },
-        {
-          id: 'srv-2',
-          title: 'Professional Teeth Whitening',
-          category: 'Cosmetics',
-          duration: 60,
-          price: 3500,
-          promotionActive: true,
-          discountPercent: 20,
-          description: 'In-office laser whitening treatment yielding up to 8 shades brighter.',
-        },
-      ],
-      null,
-      2
-    ),
+    description: 'Retrieves all available dental services with pricing.',
   },
   {
-    category: 'Public Website',
+    category: 'Public',
+    method: 'GET',
+    path: '/api/slots',
+    authRequired: false,
+    description: 'Gets available time slots for a specific date. Requires ?date=YYYY-MM-DD.',
+  },
+  {
+    category: 'Public',
+    method: 'GET',
+    path: '/api/availability',
+    authRequired: false,
+    description: 'Gets doctor availability for a specific date. Requires ?date=YYYY-MM-DD.',
+  },
+  {
+    category: 'Public',
+    method: 'GET',
+    path: '/api/blocked-dates',
+    authRequired: false,
+    description: 'Gets all blocked/clinic closure dates.',
+  },
+  {
+    category: 'Public',
+    method: 'GET',
+    path: '/api/public/announcement',
+    authRequired: false,
+    description: 'Gets the current clinic announcement text.',
+  },
+  {
+    category: 'Public',
     method: 'POST',
-    path: '/api/public/appointments',
-    authRequired: false,
-    description: 'Allows public patients to request an appointment on the website. Default status is Pending.',
-    requestPayload: JSON.stringify(
-      {
-        patientName: 'Abebe Bikila',
-        patientPhone: '+251911234567',
-        patientEmail: 'abebe@example.com',
-        serviceTitle: 'Professional Teeth Whitening',
-        dentistId: 'doc-1',
-        date: '2026-08-15',
-        time: '14:00',
-      },
-      null,
-      2
-    ),
-    responsePayload: JSON.stringify(
-      {
-        success: true,
-        appointment: {
-          id: 'apt-902',
-          patientName: 'Abebe Bikila',
-          patientPhone: '+251911234567',
-          patientEmail: 'abebe@example.com',
-          serviceTitle: 'Professional Teeth Whitening',
-          dentistId: 'doc-1',
-          dentistName: 'Dr. Sarah Jenkins, DDS',
-          date: '2026-08-15',
-          time: '14:00',
-          status: 'Pending',
-          createdAt: '2026-08-03T08:10:00.000Z',
-        },
-      },
-      null,
-      2
-    ),
+    path: '/api/appointments',
+    authRequired: true,
+    description: 'Books a new appointment. Requires JWT token.',
   },
 
-  // Auth
+  // ==========================================
+  // AUTH ENDPOINTS
+  // ==========================================
+  {
+    category: 'Auth',
+    method: 'POST',
+    path: '/api/auth/register',
+    authRequired: false,
+    description: 'Registers a new patient account.',
+  },
   {
     category: 'Auth',
     method: 'POST',
     path: '/api/auth/login',
     authRequired: false,
-    description: 'Authenticates admin/staff user and returns JWT bearer token.',
-    requestPayload: JSON.stringify({ email: 'admin@clinic.com', password: 'admin123' }, null, 2),
-    responsePayload: JSON.stringify(
-      {
-        token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6...',
-        user: { id: 'usr-admin', email: 'admin@clinic.com', name: 'Dr. Sarah Jenkins', role: 'admin' },
-      },
-      null,
-      2
-    ),
+    description: 'Authenticates user and returns JWT token.',
   },
   {
     category: 'Auth',
     method: 'GET',
     path: '/api/auth/me',
     authRequired: true,
-    description: 'Validates current JWT token and returns authenticated user profile.',
-    responsePayload: JSON.stringify(
-      { user: { id: 'usr-admin', email: 'admin@clinic.com', name: 'Dr. Sarah Jenkins', role: 'admin' } },
-      null,
-      2
-    ),
+    description: 'Gets current authenticated user profile.',
   },
 
-  // Admin Appointments
+  // ==========================================
+  // ADMIN ENDPOINTS
+  // ==========================================
+  {
+    category: 'Admin',
+    method: 'GET',
+    path: '/api/admin/config',
+    authRequired: true,
+    description: 'Gets complete admin configuration including services, doctors, appointments, availability, and blocked dates.',
+  },
   {
     category: 'Admin',
     method: 'GET',
     path: '/api/admin/appointments',
     authRequired: true,
-    description: 'Retrieves all appointments across all 6 statuses (Pending, Confirmed, Arrived, Completed, No Show, Canceled).',
-    responsePayload: JSON.stringify(
-      [
-        {
-          id: 'apt-101',
-          patientName: 'Emma Thompson',
-          patientPhone: '(555) 890-1234',
-          serviceTitle: 'Comprehensive Oral Exam & Cleaning',
-          dentistId: 'doc-1',
-          dentistName: 'Dr. Sarah Jenkins, DDS',
-          date: '2026-07-29',
-          time: '09:00',
-          status: 'Pending',
-        },
-      ],
-      null,
-      2
-    ),
+    description: 'Retrieves all appointments.',
+  },
+  {
+    category: 'Admin',
+    method: 'POST',
+    path: '/api/admin/appointments',
+    authRequired: true,
+    description: 'Creates a new appointment (admin only).',
   },
   {
     category: 'Admin',
     method: 'PUT',
     path: '/api/admin/appointments/:id/status',
     authRequired: true,
-    description:
-      'Inline updates appointment status. Supported statuses: Pending, Confirmed, Arrived, Completed, No Show, Canceled.',
-    requestPayload: JSON.stringify({ status: 'Confirmed' }, null, 2),
-    responsePayload: JSON.stringify({ id: 'apt-101', status: 'Confirmed' }, null, 2),
+    description: 'Updates appointment status. Statuses: Pending, Confirmed, Arrived, Completed, No Show, Canceled.',
   },
+
+  // Services
   {
     category: 'Admin',
     method: 'POST',
-    path: '/api/admin/appointments',
+    path: '/api/admin/services',
     authRequired: true,
-    description: 'Admin creates and assigns an appointment for any patient directly.',
-    requestPayload: JSON.stringify(
-      {
-        patientName: 'Jane Doe',
-        patientPhone: '(555) 123-4567',
-        patientEmail: 'jane@example.com',
-        serviceTitle: 'Professional Teeth Whitening',
-        dentistId: 'doc-1',
-        date: '2026-08-01',
-        time: '10:00',
-        status: 'Confirmed',
-      },
-      null,
-      2
-    ),
-    responsePayload: JSON.stringify(
-      {
-        id: 'apt-105',
-        patientName: 'Jane Doe',
-        patientPhone: '(555) 123-4567',
-        patientEmail: 'jane@example.com',
-        serviceTitle: 'Professional Teeth Whitening',
-        dentistId: 'doc-1',
-        dentistName: 'Dr. Sarah Jenkins, DDS',
-        date: '2026-08-01',
-        time: '10:00',
-        status: 'Confirmed',
-      },
-      null,
-      2
-    ),
+    description: 'Creates a new service.',
+  },
+  {
+    category: 'Admin',
+    method: 'PUT',
+    path: '/api/admin/services/:title',
+    authRequired: true,
+    description: 'Updates an existing service by title.',
+  },
+  {
+    category: 'Admin',
+    method: 'DELETE',
+    path: '/api/admin/services/:title',
+    authRequired: true,
+    description: 'Deletes a service by title.',
   },
 
-  // Admin Doctors Roster
+  // Doctors
   {
     category: 'Admin',
     method: 'GET',
     path: '/api/admin/doctors',
     authRequired: true,
-    description: 'Retrieves full doctor roster including featured flags and email/phone contact.',
-    responsePayload: JSON.stringify(
-      [
-        {
-          id: 'doc-1',
-          name: 'Dr. Sarah Jenkins, DDS',
-          specialty: 'Cosmetic Dentistry & Veneers',
-          bio: 'Lead cosmetic specialist...',
-          avatar: '',
-          email: 's.jenkins@brightsmile.com',
-          phone: '(555) 234-8901',
-          isFeatured: true,
-        },
-      ],
-      null,
-      2
-    ),
+    description: 'Retrieves full doctor roster.',
+  },
+  {
+    category: 'Admin',
+    method: 'POST',
+    path: '/api/admin/doctors',
+    authRequired: true,
+    description: 'Adds a new doctor (supports image upload).',
+  },
+  {
+    category: 'Admin',
+    method: 'PUT',
+    path: '/api/admin/doctors/:id',
+    authRequired: true,
+    description: 'Updates an existing doctor (supports image upload).',
   },
   {
     category: 'Admin',
     method: 'PUT',
     path: '/api/admin/doctors/:id/feature',
     authRequired: true,
-    description:
-      'Toggles doctor featured flag for public homepage display. Strictly limits active featured doctors to maximum of 3.',
-    requestPayload: JSON.stringify({ isFeatured: true }, null, 2),
-    responsePayload: JSON.stringify({ id: 'doc-1', isFeatured: true }, null, 2),
+    description: 'Toggles doctor featured status. Maximum 3 featured doctors allowed.',
   },
   {
     category: 'Admin',
-    method: 'POST',
-    path: '/api/admin/doctors',
+    method: 'DELETE',
+    path: '/api/admin/doctors/:id',
     authRequired: true,
-    description: 'Adds a new practitioner to the clinic roster.',
-    requestPayload: JSON.stringify(
-      {
-        name: 'Dr. Michael Chang, DDS',
-        specialty: 'Endodontics',
-        bio: 'Specialist in root canal procedures.',
-        avatar: '',
-        email: 'm.chang@brightsmile.com',
-        phone: '(555) 678-2345',
-        isFeatured: false,
-      },
-      null,
-      2
-    ),
-    responsePayload: JSON.stringify(
-      {
-        id: 'doc-5',
-        name: 'Dr. Michael Chang, DDS',
-        specialty: 'Endodontics',
-        bio: 'Specialist in root canal procedures.',
-        avatar: '',
-        email: 'm.chang@brightsmile.com',
-        phone: '(555) 678-2345',
-        isFeatured: false,
-      },
-      null,
-      2
-    ),
+    description: 'Deletes a doctor by ID.',
   },
 
-  // Admin Services
+  // Availability
   {
     category: 'Admin',
     method: 'GET',
-    path: '/api/admin/services',
+    path: '/api/admin/availability',
     authRequired: true,
-    description: 'Retrieves all clinic procedures with duration, price in ETB, and promotion discounts.',
-    responsePayload: JSON.stringify(
-      [
-        {
-          id: 'srv-1',
-          title: 'Comprehensive Oral Exam & Cleaning',
-          category: 'Preventive Care',
-          duration: 45,
-          price: 1500,
-          promotionActive: true,
-          discountPercent: 15,
-          description: 'Full digital X-rays and ultrasonic scaling.',
-        },
-      ],
-      null,
-      2
-    ),
+    description: 'Gets all configured availabilities.',
+  },
+  {
+    category: 'Admin',
+    method: 'PUT',
+    path: '/api/admin/availability',
+    authRequired: true,
+    description: 'Sets availability for a specific date.',
+  },
+  {
+    category: 'Admin',
+    method: 'DELETE',
+    path: '/api/admin/availability/:date',
+    authRequired: true,
+    description: 'Removes availability for a specific date.',
+  },
+
+  // Blocked Dates
+  {
+    category: 'Admin',
+    method: 'GET',
+    path: '/api/admin/blocked-dates',
+    authRequired: true,
+    description: 'Gets all blocked/clinic closure dates.',
   },
   {
     category: 'Admin',
     method: 'POST',
-    path: '/api/admin/services',
+    path: '/api/admin/blocked-dates',
     authRequired: true,
-    description: 'Creates a new service procedure with ETB pricing and promotion settings.',
-    requestPayload: JSON.stringify(
-      {
-        title: 'Laser Teeth Whitening',
-        category: 'Cosmetics',
-        duration: 60,
-        price: 3500,
-        promotionActive: true,
-        discountPercent: 20,
-        description: 'In-office laser whitening procedure.',
-      },
-      null,
-      2
-    ),
-    responsePayload: JSON.stringify(
-      {
-        id: 'srv-7',
-        title: 'Laser Teeth Whitening',
-        category: 'Cosmetics',
-        duration: 60,
-        price: 3500,
-        promotionActive: true,
-        discountPercent: 20,
-        description: 'In-office laser whitening procedure.',
-      },
-      null,
-      2
-    ),
+    description: 'Adds a blocked/clinic closure date.',
+  },
+  {
+    category: 'Admin',
+    method: 'DELETE',
+    path: '/api/admin/blocked-dates/:date',
+    authRequired: true,
+    description: 'Removes a blocked/clinic closure date.',
+  },
+
+  // Announcement & Config
+  {
+    category: 'Admin',
+    method: 'PUT',
+    path: '/api/admin/announcement',
+    authRequired: true,
+    description: 'Updates the clinic announcement text.',
+  },
+  {
+    category: 'Admin',
+    method: 'PUT',
+    path: '/api/admin/cutoff',
+    authRequired: true,
+    description: 'Updates the booking cutoff time.',
   },
 ];
-
-const jsIntegrationSnippet = `// -------------------------------------------------------------
-// Dental Clinic Public Website API Integration Snippet (JavaScript / React)
-// Connect your public website directly to: ${DEPLOYED_BACKEND_URL}
-// -------------------------------------------------------------
-
-const BACKEND_BASE_URL = "${DEPLOYED_BACKEND_URL}";
-
-// 1. Fetch Featured Doctors for Homepage
-export async function getFeaturedDoctors() {
-  const res = await fetch(\`\${BACKEND_BASE_URL}/api/public/doctors?featured=true\`);
-  if (!res.ok) throw new Error('Failed to fetch doctors');
-  return res.json();
-}
-
-// 2. Fetch Active Services & ETB Prices
-export async function getClinicServices() {
-  const res = await fetch(\`\${BACKEND_BASE_URL}/api/public/services\`);
-  if (!res.ok) throw new Error('Failed to fetch services');
-  return res.json();
-}
-
-// 3. Submit Patient Appointment Booking Form
-export async function submitPatientBooking(bookingData) {
-  /*
-    bookingData = {
-      patientName: "John Smith",
-      patientPhone: "(555) 987-6543",
-      patientEmail: "john@example.com",
-      serviceTitle: "Comprehensive Oral Exam & Cleaning",
-      dentistId: "doc-1",
-      date: "2026-08-10",
-      time: "10:30"
-    }
-  */
-  const res = await fetch(\`\${BACKEND_BASE_URL}/api/public/appointments\`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(bookingData),
-  });
-  
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to submit booking');
-  return data;
-}`;
 
 export const ApiDocsSection: React.FC = () => {
   const [selectedCat, setSelectedCat] = useState<string>('All');
@@ -461,7 +309,7 @@ export const ApiDocsSection: React.FC = () => {
           API Connectors & Integration Specification
         </h2>
         <p className="text-xs text-[#64748B] mt-0.5">
-          Complete RESTful API endpoint reference and live integration specs for connecting your public website and backend.
+          Complete RESTful API endpoint reference for connecting your frontend applications.
         </p>
       </div>
 
@@ -490,7 +338,7 @@ export const ApiDocsSection: React.FC = () => {
                   rel="noreferrer"
                   className="text-[#0EA5E9] font-medium underline flex-inline items-center gap-1"
                 >
-                  https://dental-clinic-backend-0vjn.onrender.com/api-docs/ <ExternalLink className="w-3 h-3 inline" />
+                  {DEPLOYED_BACKEND_URL}/api-docs/ <ExternalLink className="w-3 h-3 inline" />
                 </a>
               </div>
             </div>
@@ -571,7 +419,7 @@ export const ApiDocsSection: React.FC = () => {
         {connectionStatus === 'error' && (
           <div className="p-2.5 rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/30 text-[#EF4444] text-xs flex items-center gap-2 font-medium">
             <AlertTriangle className="w-4 h-4 text-[#EF4444] shrink-0" />
-            Backend server connection verified. Deployed swagger docs active at https://dental-clinic-backend-0vjn.onrender.com/api-docs/
+            Backend server connection verified. Deployed swagger docs active at {DEPLOYED_BACKEND_URL}/api-docs/
           </div>
         )}
       </div>
@@ -584,7 +432,7 @@ export const ApiDocsSection: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto">
-          {['All', 'Public Website', 'Auth', 'Admin'].map((cat) => (
+          {['All', 'Public', 'Auth', 'Admin'].map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCat(cat)}
@@ -598,35 +446,6 @@ export const ApiDocsSection: React.FC = () => {
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Code Integration Box for Public Website */}
-      <div className="border border-[#E2E8F0] rounded-xl overflow-hidden shadow-xs">
-        <div className="bg-[#0F172A] px-4 py-3 border-b border-[#1E293B] flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white text-xs font-bold font-mono">
-            <Code2 className="w-4 h-4 text-[#0EA5E9]" />
-            <span>Public Website Integration JavaScript Code (Fetch / Axios)</span>
-          </div>
-          <button
-            onClick={() => copyCode(jsIntegrationSnippet, 'js-snippet')}
-            className="text-[#94A3B8] hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-          >
-            {copiedPath === 'js-snippet' ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-[#22C55E]" />
-                Copied Snippet
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                Copy Code
-              </>
-            )}
-          </button>
-        </div>
-        <pre className="p-4 bg-[#0F172A] text-[11px] font-mono text-[#94A3B8] leading-relaxed overflow-x-auto">
-          {jsIntegrationSnippet}
-        </pre>
       </div>
 
       {/* Endpoints List */}
@@ -674,9 +493,9 @@ export const ApiDocsSection: React.FC = () => {
               </div>
             </div>
 
-            <p className="text-xs text-[#64748B] mb-3">{ep.description}</p>
+            <p className="text-xs text-[#64748B]">{ep.description}</p>
 
-            {/* Payloads */}
+            {/* Payloads - only show if they exist */}
             {(ep.requestPayload || ep.responsePayload) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-[#E2E8F0]">
                 {ep.requestPayload && (

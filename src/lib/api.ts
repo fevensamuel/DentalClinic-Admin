@@ -23,7 +23,7 @@ export function getApiBaseUrl(): string {
   if (customUrl) return customUrl.replace(/\/+$/, '');
   const envUrl = (import.meta as any).env?.VITE_API_URL;
   if (envUrl) return envUrl.replace(/\/+$/, '');
-  return ''; // Default relative path to local server proxy
+  return 'https://dental-clinic-backend-0vjn.onrender.com';
 }
 
 export function setBackendUrl(url: string) {
@@ -58,13 +58,20 @@ export function clearAuth() {
   localStorage.removeItem(USER_KEY);
 }
 
+// ==========================================
+// FETCH WITH AUTH (Supports FormData)
+// ==========================================
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const token = getStoredToken();
   const baseUrl = getApiBaseUrl();
   const targetUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
 
   const headers = new Headers(options.headers || {});
-  headers.set('Content-Type', 'application/json');
+
+  // Don't set Content-Type for FormData (browser will set it with boundary)
+  if (!(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
@@ -86,8 +93,13 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
   return data;
 }
 
+// ==========================================
+// API OBJECT
+// ==========================================
 export const api = {
-  // Auth
+  // ==========================================
+  // AUTH
+  // ==========================================
   async login(email: string, password: string): Promise<AuthResponse> {
     const baseUrl = getApiBaseUrl();
     const res = await fetch(`${baseUrl}/api/auth/login`, {
@@ -107,12 +119,39 @@ export const api = {
     return fetchWithAuth('/api/auth/me');
   },
 
-  // Config Aggregation
+  // ==========================================
+  // CONFIG
+  // ==========================================
   async getConfig(): Promise<ClinicConfig> {
-    return fetchWithAuth('/api/admin/config');
+    const data = await fetchWithAuth('/api/admin/config');
+    return {
+      services: data.services || [],
+      doctors: (data.doctors || []).map((d: any) => ({
+        ...d,
+        id: d.id || d._id,
+        imageUrl: d.imageUrl || '',
+        specialty: d.specialty || d.title || '',
+      })),
+      appointments: data.appointments || [],
+      availability: data.availability || {},
+      blockedDates: data.blockedDates || [],
+      announcement: data.announcement || '',
+      bookingCutoffTime: data.bookingCutoffTime || '14:00',
+      settings: {
+        availabilities: Object.entries(data.availability || {}).map(([date, doctorIds]) => ({
+          date,
+          doctorIds: Array.isArray(doctorIds) ? doctorIds : []
+        })),
+        blockedDates: data.blockedDates || [],
+        announcement: { text: data.announcement || '', active: true, bannerType: 'info', updatedAt: new Date().toISOString() },
+        cutoff: { cutoffTime: data.bookingCutoffTime || '17:00', sameDayBookingAllowed: true, minNoticeHours: 2 }
+      }
+    };
   },
 
-  // Appointments
+  // ==========================================
+  // APPOINTMENTS
+  // ==========================================
   async getAppointments(): Promise<Appointment[]> {
     return fetchWithAuth('/api/admin/appointments');
   },
@@ -131,9 +170,11 @@ export const api = {
     });
   },
 
-  // Services
+  // ==========================================
+  // SERVICES
+  // ==========================================
   async getServices(): Promise<Service[]> {
-    return fetchWithAuth('/api/admin/services');
+    return fetchWithAuth('/api/services');
   },
 
   async createService(serviceData: Partial<Service>): Promise<Service> {
@@ -156,9 +197,17 @@ export const api = {
     });
   },
 
-  // Doctors
+  // ==========================================
+  // DOCTORS - WITH FORMDATA SUPPORT
+  // ==========================================
   async getDoctors(): Promise<Doctor[]> {
-    return fetchWithAuth('/api/admin/doctors');
+    const data = await fetchWithAuth('/api/admin/doctors');
+    return (data || []).map((d: any) => ({
+      ...d,
+      id: d.id || d._id,
+      imageUrl: d.imageUrl || '',
+      specialty: d.specialty || d.title || '',
+    }));
   },
 
   async toggleDoctorFeatured(id: string, isFeatured: boolean): Promise<Doctor> {
@@ -168,17 +217,17 @@ export const api = {
     });
   },
 
-  async createDoctor(doctorData: Partial<Doctor>): Promise<Doctor> {
+  async createDoctor(doctorData: FormData): Promise<Doctor> {
     return fetchWithAuth('/api/admin/doctors', {
       method: 'POST',
-      body: JSON.stringify(doctorData),
+      body: doctorData,
     });
   },
 
-  async updateDoctor(id: string, doctorData: Partial<Doctor>): Promise<Doctor> {
+  async updateDoctor(id: string, doctorData: FormData): Promise<Doctor> {
     return fetchWithAuth(`/api/admin/doctors/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(doctorData),
+      body: doctorData,
     });
   },
 
@@ -188,7 +237,9 @@ export const api = {
     });
   },
 
-  // Settings - Availability
+  // ==========================================
+  // AVAILABILITY
+  // ==========================================
   async updateAvailability(date: string, doctorIds: string[]): Promise<{ date: string; doctorIds: string[] }> {
     return fetchWithAuth('/api/admin/availability', {
       method: 'PUT',
@@ -196,14 +247,20 @@ export const api = {
     });
   },
 
-  async clearAvailability(date: string, doctorId?: string): Promise<{ success: boolean }> {
-    return fetchWithAuth('/api/admin/availability', {
+  async clearAvailability(date: string): Promise<{ success: boolean }> {
+    return fetchWithAuth(`/api/admin/availability/${encodeURIComponent(date)}`, {
       method: 'DELETE',
-      body: JSON.stringify({ date, doctorId }),
     });
   },
 
-  // Settings - Blocked Dates
+  async getAvailabilities(): Promise<DateAvailability[]> {
+    const data = await fetchWithAuth('/api/admin/availability');
+    return data || [];
+  },
+
+  // ==========================================
+  // BLOCKED DATES
+  // ==========================================
   async addBlockedDate(date: string, reason: string): Promise<BlockedDate> {
     return fetchWithAuth('/api/admin/blocked-dates', {
       method: 'POST',
@@ -217,7 +274,9 @@ export const api = {
     });
   },
 
-  // Settings - Announcement
+  // ==========================================
+  // ANNOUNCEMENT
+  // ==========================================
   async updateAnnouncement(announcementData: Partial<Announcement>): Promise<Announcement> {
     return fetchWithAuth('/api/admin/announcement', {
       method: 'PUT',
@@ -225,11 +284,34 @@ export const api = {
     });
   },
 
-  // Settings - Cutoff
+  // ==========================================
+  // CUTOFF
+  // ==========================================
   async updateCutoff(cutoffData: Partial<CutoffSettings>): Promise<CutoffSettings> {
     return fetchWithAuth('/api/admin/cutoff', {
       method: 'PUT',
       body: JSON.stringify(cutoffData),
     });
+  },
+
+  // ==========================================
+  // SLOTS
+  // ==========================================
+  async getAvailableSlots(date: string, serviceTitle: string): Promise<string[]> {
+    const encodedService = encodeURIComponent(serviceTitle);
+    const data = await fetchWithAuth(`/api/slots?date=${date}&serviceTitle=${encodedService}`);
+    return data.slots || [];
+  },
+
+  // ==========================================
+  // BLOCKED DATES (for slots check)
+  // ==========================================
+  async getBlockedDates(): Promise<BlockedDate[]> {
+    try {
+      const config = await this.getConfig();
+      return config.blockedDates || [];
+    } catch {
+      return [];
+    }
   },
 };

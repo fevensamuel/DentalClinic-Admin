@@ -1,3 +1,4 @@
+// ClinicSettingsSection.tsx - ✅ FIXED: Remove duplicate toast
 import React, { useState } from 'react';
 import {
   Calendar,
@@ -38,9 +39,9 @@ interface ClinicSettingsSectionProps {
 }
 
 export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
-  doctors,
-  availabilities,
-  blockedDates,
+  doctors = [],
+  availabilities = [],
+  blockedDates = [],
   announcement,
   cutoff,
   onUpdateAvailability,
@@ -52,6 +53,25 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
   onSuccessToast,
   onErrorToast,
 }) => {
+  // ✅ EARLY RETURN - If no doctors, show message
+  if (!doctors || doctors.length === 0) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2 mb-4">
+          <Calendar className="w-5 h-5 text-cyan-600" />
+          Clinic Operating Settings
+        </h2>
+        <p className="text-sm text-slate-600">No doctors available. Please refresh or try again.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-4 px-4 py-2 bg-cyan-600 text-white rounded-lg text-xs hover:bg-cyan-700"
+        >
+          Refresh Page
+        </button>
+      </div>
+    );
+  }
+
   const [activeTab, setActiveTab] = useState<'availability' | 'blocked' | 'announcement' | 'cutoff'>(
     'availability'
   );
@@ -60,7 +80,9 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
 
   // 1. Availability State
   const [selectedAvailDate, setSelectedAvailDate] = useState(todayStr);
-  const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>(doctors.map((d) => d.id));
+  const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>(
+    doctors.map((d) => d.id)
+  );
   const [savingAvail, setSavingAvail] = useState(false);
 
   // 2. Blocked Date State
@@ -69,15 +91,15 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
   const [savingBlocked, setSavingBlocked] = useState(false);
 
   // 3. Announcement State
-  const [announcementText, setAnnouncementText] = useState(announcement.text);
-  const [announcementActive, setAnnouncementActive] = useState(announcement.active);
-  const [announcementType, setAnnouncementType] = useState(announcement.bannerType || 'info');
+  const [announcementText, setAnnouncementText] = useState(announcement?.text || '');
+  const [announcementActive, setAnnouncementActive] = useState(announcement?.active || false);
+  const [announcementType, setAnnouncementType] = useState(announcement?.bannerType || 'info');
   const [savingAnnounce, setSavingAnnounce] = useState(false);
 
   // 4. Cutoff State
-  const [cutoffTime, setCutoffTime] = useState(cutoff.cutoffTime || '17:00');
-  const [sameDayAllowed, setSameDayAllowed] = useState(cutoff.sameDayBookingAllowed ?? true);
-  const [minNoticeHours, setMinNoticeHours] = useState(cutoff.minNoticeHours || 2);
+  const [cutoffTime, setCutoffTime] = useState(cutoff?.cutoffTime || '17:00');
+  const [sameDayAllowed, setSameDayAllowed] = useState(cutoff?.sameDayBookingAllowed ?? true);
+  const [minNoticeHours, setMinNoticeHours] = useState(cutoff?.minNoticeHours || 2);
   const [savingCutoff, setSavingCutoff] = useState(false);
 
   // Availability handlers
@@ -87,6 +109,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     );
   };
 
+  // ✅ FIXED: Removed duplicate toast - App.tsx handles it
   const handleSaveAvailability = async () => {
     if (!selectedAvailDate) {
       onErrorToast('Please select a date first.');
@@ -95,7 +118,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     setSavingAvail(true);
     try {
       await onUpdateAvailability(selectedAvailDate, selectedDoctorIds);
-      onSuccessToast(`Saved availability for ${selectedAvailDate}`);
+      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
     } catch (err: any) {
       onErrorToast(err.message || 'Failed to save availability');
     } finally {
@@ -107,7 +130,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     setSavingAvail(true);
     try {
       await onClearAvailability(dateToClear);
-      onSuccessToast(`Cleared schedule for ${dateToClear}`);
+      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
     } catch (err: any) {
       onErrorToast(err.message || 'Failed to clear availability');
     } finally {
@@ -115,7 +138,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     }
   };
 
-  // Blocked Date handlers
+  // Blocked Date handlers - ✅ REMOVED duplicate toasts
   const handleAddBlockedDate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBlockedDate) {
@@ -125,7 +148,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     setSavingBlocked(true);
     try {
       await onAddBlockedDate(newBlockedDate, newBlockedReason || 'Clinic Closed');
-      onSuccessToast(`Date ${newBlockedDate} added to blocked schedule.`);
+      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
       setNewBlockedDate('');
       setNewBlockedReason('');
     } catch (err: any) {
@@ -138,13 +161,13 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
   const handleRemoveBlockedDate = async (date: string) => {
     try {
       await onRemoveBlockedDate(date);
-      onSuccessToast(`Unblocked date ${date}`);
+      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
     } catch (err: any) {
       onErrorToast(err.message || 'Failed to unblock date');
     }
   };
 
-  // Announcement handler
+  // Announcement handler - ✅ REMOVED duplicate toasts
   const handleSaveAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingAnnounce(true);
@@ -154,7 +177,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
         active: announcementActive,
         bannerType: announcementType as any,
       });
-      onSuccessToast('Announcement banner updated successfully.');
+      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
     } catch (err: any) {
       onErrorToast(err.message || 'Failed to update announcement');
     } finally {
@@ -162,7 +185,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     }
   };
 
-  // Cutoff handler
+  // Cutoff handler - ✅ REMOVED duplicate toasts
   const handleSaveCutoff = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingCutoff(true);
@@ -172,7 +195,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
         sameDayBookingAllowed: sameDayAllowed,
         minNoticeHours: Number(minNoticeHours),
       });
-      onSuccessToast('Cutoff and booking notice rules updated.');
+      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
     } catch (err: any) {
       onErrorToast(err.message || 'Failed to update cutoff settings');
     } finally {
@@ -196,6 +219,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-100 pb-3 overflow-x-auto scrollbar-none">
         <button
+          key="availability-tab"
           onClick={() => setActiveTab('availability')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
             activeTab === 'availability'
@@ -208,6 +232,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
         </button>
 
         <button
+          key="blocked-tab"
           onClick={() => setActiveTab('blocked')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
             activeTab === 'blocked'
@@ -220,6 +245,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
         </button>
 
         <button
+          key="announcement-tab"
           onClick={() => setActiveTab('announcement')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
             activeTab === 'announcement'
@@ -232,6 +258,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
         </button>
 
         <button
+          key="cutoff-tab"
           onClick={() => setActiveTab('cutoff')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
             activeTab === 'cutoff'
@@ -352,9 +379,9 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
                   No date availabilities saved yet. All doctors default to available.
                 </p>
               ) : (
-                availabilities.map((avail) => (
+                availabilities.map((avail, idx) => (
                   <div
-                    key={avail.date}
+                    key={`${avail.date || idx}`}
                     className="p-4 bg-slate-50 border border-slate-200 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                   >
                     <div>
@@ -362,7 +389,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
                         {avail.date}
                       </span>
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {avail.doctorIds.map((dId) => {
+                        {(avail.doctorIds || []).map((dId) => {
                           const doc = doctors.find((d) => d.id === dId);
                           return (
                             <span
@@ -449,9 +476,9 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
                   No blocked dates configured. The clinic is open on all standard operating days.
                 </p>
               ) : (
-                blockedDates.map((b) => (
+                blockedDates.map((b, idx) => (
                   <div
-                    key={b.date}
+                    key={`${b.date || idx}`}
                     className="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-4"
                   >
                     <div>
@@ -483,7 +510,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
               Homepage Announcement Banner
             </h3>
             <span className="text-xs text-slate-400 font-mono">
-              Last updated: {new Date(announcement.updatedAt).toLocaleDateString()}
+              Last updated: {announcement?.updatedAt ? new Date(announcement.updatedAt).toLocaleDateString() : 'N/A'}
             </span>
           </div>
 

@@ -20,6 +20,7 @@ import {
   CutoffSettings,
   User,
   AppointmentStatus,
+  normalizeService,
 } from './types';
 
 export default function App() {
@@ -85,13 +86,42 @@ export default function App() {
     try {
       setLoadingConfig(true);
       const config = await api.getConfig();
+      
       setAppointments(config.appointments || []);
-      setServices(config.services || []);
-      setDoctors(config.doctors || []);
-      setAvailabilities(config.settings?.availabilities || []);
-      setBlockedDates(config.settings?.blockedDates || []);
-      if (config.settings?.announcement) setAnnouncement(config.settings.announcement);
-      if (config.settings?.cutoff) setCutoff(config.settings.cutoff);
+      setServices((config.services || []).map(normalizeService));
+      
+      // ✅ Map doctors properly - ensure imageUrl is preserved
+      setDoctors((config.doctors || []).map((d: any) => ({
+        ...d,
+        id: d.id || d._id,
+        imageUrl: d.imageUrl || '',
+        specialty: d.specialty || d.title || '',
+      })));
+      
+      // ✅ Convert availability object to array
+      const availabilityArray = Object.entries(config.availability || {}).map(([date, doctorIds]) => ({
+        date,
+        doctorIds: Array.isArray(doctorIds) ? doctorIds : []
+      }));
+      setAvailabilities(availabilityArray);
+      
+      // ✅ Ensure blockedDates is array
+      setBlockedDates(Array.isArray(config.blockedDates) ? config.blockedDates : []);
+      
+      if (config.announcement) {
+        setAnnouncement(prev => ({ 
+          ...prev, 
+          text: config.announcement || '' 
+        }));
+      }
+      
+      if (config.bookingCutoffTime) {
+        setCutoff(prev => ({ 
+          ...prev, 
+          cutoffTime: config.bookingCutoffTime || '17:00' 
+        }));
+      }
+      
     } catch (err: any) {
       console.error('Failed to load clinic config:', err);
       if (err.message?.includes('Unauthorized')) {
@@ -104,6 +134,36 @@ export default function App() {
       setLoadingConfig(false);
     }
   }, [addToast]);
+
+  // Load services separately (for refreshing after updates)
+  const loadServices = useCallback(async () => {
+    try {
+      const freshServices = await api.getServices();
+      setServices(freshServices.map(normalizeService));
+    } catch (err) {
+      console.error('Failed to load services:', err);
+    }
+  }, []);
+
+  // Load appointments separately (for refreshing after updates)
+  const loadAppointments = useCallback(async () => {
+    try {
+      const freshAppointments = await api.getAppointments();
+      setAppointments(freshAppointments);
+    } catch (err) {
+      console.error('Failed to load appointments:', err);
+    }
+  }, []);
+
+  // Load availabilities separately
+  const loadAvailabilities = useCallback(async () => {
+    try {
+      const freshAvailabilities = await api.getAvailabilities();
+      setAvailabilities(Array.isArray(freshAvailabilities) ? freshAvailabilities : []);
+    } catch (err) {
+      console.error('Failed to load availabilities:', err);
+    }
+  }, []);
 
   useEffect(() => {
     loadClinicData();
@@ -135,8 +195,8 @@ export default function App() {
   // ---------------------------------------------------------
   const handleStatusChange = async (id: string, newStatus: AppointmentStatus) => {
     try {
-      const updated = await api.updateAppointmentStatus(id, newStatus);
-      setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)));
+      await api.updateAppointmentStatus(id, newStatus);
+      await loadAppointments();
       addToast('success', `Appointment status updated to ${newStatus}`);
     } catch (err: any) {
       addToast('error', err.message || 'Failed to update appointment status');
@@ -145,9 +205,9 @@ export default function App() {
 
   const handleCreateAppointment = async (data: Partial<Appointment>) => {
     try {
-      const created = await api.createAppointment(data);
-      setAppointments((prev) => [created, ...prev]);
-      addToast('success', `Appointment created for ${created.patientName}`);
+      await api.createAppointment(data);
+      await loadAppointments();
+      addToast('success', 'Appointment created successfully.');
     } catch (err: any) {
       addToast('error', err.message || 'Failed to create appointment');
     }
@@ -158,9 +218,9 @@ export default function App() {
   // ---------------------------------------------------------
   const handleCreateService = async (serviceData: Partial<Service>) => {
     try {
-      const created = await api.createService(serviceData);
-      setServices((prev) => [...prev, created]);
-      addToast('success', `Service '${created.title}' added to catalog.`);
+      await api.createService(serviceData);
+      await loadServices();
+      addToast('success', `Service added to catalog.`);
     } catch (err: any) {
       addToast('error', err.message || 'Failed to create service');
     }
@@ -168,11 +228,9 @@ export default function App() {
 
   const handleUpdateService = async (oldTitle: string, serviceData: Partial<Service>) => {
     try {
-      const updated = await api.updateService(oldTitle, serviceData);
-      setServices((prev) =>
-        prev.map((s) => (s.title.toLowerCase() === oldTitle.toLowerCase() || s.id === updated.id ? updated : s))
-      );
-      addToast('success', `Service '${updated.title}' updated.`);
+      await api.updateService(oldTitle, serviceData);
+      await loadServices();
+      addToast('success', `Service updated successfully.`);
     } catch (err: any) {
       addToast('error', err.message || 'Failed to update service');
     }
@@ -181,7 +239,7 @@ export default function App() {
   const handleDeleteService = async (title: string) => {
     try {
       await api.deleteService(title);
-      setServices((prev) => prev.filter((s) => s.title.toLowerCase() !== title.toLowerCase()));
+      await loadServices();
       addToast('success', `Service '${title}' deleted.`);
     } catch (err: any) {
       addToast('error', err.message || 'Failed to delete service');
@@ -189,36 +247,36 @@ export default function App() {
   };
 
   // ---------------------------------------------------------
-  // DOCTOR ROSTER HANDLERS (WITH MAX 3 FEATURED RULE)
+  // DOCTOR ROSTER HANDLERS
   // ---------------------------------------------------------
   const handleToggleDoctorFeatured = async (id: string, isFeatured: boolean) => {
     try {
       const updated = await api.toggleDoctorFeatured(id, isFeatured);
-      setDoctors((prev) => prev.map((d) => (d.id === id ? updated : d)));
       addToast(
         'success',
-        `${updated.name} ${isFeatured ? 'is now featured on website' : 'unfeatured'}.`
+        `${updated?.name || 'Doctor'} ${isFeatured ? 'is now featured on website' : 'unfeatured'}.`
       );
+      await loadClinicData();
     } catch (err: any) {
       addToast('error', err.message || 'Failed to update featured status');
     }
   };
 
-  const handleCreateDoctor = async (doctorData: Partial<Doctor>) => {
+  const handleCreateDoctor = async (doctorData: FormData) => {
     try {
       const created = await api.createDoctor(doctorData);
-      setDoctors((prev) => [...prev, created]);
-      addToast('success', `Dr. ${created.name} added to roster.`);
+      addToast('success', `Dr. ${created?.name || 'Doctor'} added to roster.`);
+      await loadClinicData();
     } catch (err: any) {
       addToast('error', err.message || 'Failed to add doctor');
     }
   };
 
-  const handleUpdateDoctor = async (id: string, doctorData: Partial<Doctor>) => {
+  const handleUpdateDoctor = async (id: string, doctorData: FormData) => {
     try {
       const updated = await api.updateDoctor(id, doctorData);
-      setDoctors((prev) => prev.map((d) => (d.id === id ? updated : d)));
-      addToast('success', `Updated profile for ${updated.name}.`);
+      addToast('success', `Updated profile for ${updated?.name || 'Doctor'}.`);
+      await loadClinicData();
     } catch (err: any) {
       addToast('error', err.message || 'Failed to update doctor profile');
     }
@@ -227,8 +285,8 @@ export default function App() {
   const handleDeleteDoctor = async (id: string) => {
     try {
       await api.deleteDoctor(id);
-      setDoctors((prev) => prev.filter((d) => d.id !== id));
       addToast('success', 'Doctor removed from roster.');
+      await loadClinicData();
     } catch (err: any) {
       addToast('error', err.message || 'Failed to remove doctor');
     }
@@ -238,49 +296,65 @@ export default function App() {
   // SETTINGS HANDLERS
   // ---------------------------------------------------------
   const handleUpdateAvailability = async (date: string, doctorIds: string[]) => {
-    const res = await api.updateAvailability(date, doctorIds);
-    setAvailabilities((prev) => {
-      const idx = prev.findIndex((a) => a.date === date);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = res;
-        return copy;
-      }
-      return [...prev, res];
-    });
+    try {
+      await api.updateAvailability(date, doctorIds);
+      await loadClinicData();
+      addToast('success', `Saved availability for ${date}`);
+    } catch (err: any) {
+      console.error('Save availability error:', err);
+      addToast('error', err.message || 'Failed to save availability');
+    }
   };
 
   const handleClearAvailability = async (date: string) => {
-    await api.clearAvailability(date);
-    setAvailabilities((prev) => prev.filter((a) => a.date !== date));
+    try {
+      await api.clearAvailability(date);
+      await loadClinicData();
+      addToast('success', `Cleared schedule for ${date}`);
+    } catch (err: any) {
+      console.error('Clear availability error:', err);
+      addToast('error', err.message || 'Failed to clear availability');
+    }
   };
 
   const handleAddBlockedDate = async (date: string, reason: string) => {
-    const created = await api.addBlockedDate(date, reason);
-    setBlockedDates((prev) => {
-      const idx = prev.findIndex((b) => b.date === date);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = created;
-        return copy;
-      }
-      return [...prev, created];
-    });
+    try {
+      await api.addBlockedDate(date, reason);
+      await loadClinicData();
+      addToast('success', `Blocked date ${date} added.`);
+    } catch (err: any) {
+      addToast('error', err.message || 'Failed to block date');
+    }
   };
 
   const handleRemoveBlockedDate = async (date: string) => {
-    await api.removeBlockedDate(date);
-    setBlockedDates((prev) => prev.filter((b) => b.date !== date));
+    try {
+      await api.removeBlockedDate(date);
+      await loadClinicData();
+      addToast('success', `Unblocked date ${date}.`);
+    } catch (err: any) {
+      addToast('error', err.message || 'Failed to unblock date');
+    }
   };
 
   const handleUpdateAnnouncement = async (announcementData: Partial<Announcement>) => {
-    const updated = await api.updateAnnouncement(announcementData);
-    setAnnouncement(updated);
+    try {
+      const updated = await api.updateAnnouncement(announcementData);
+      setAnnouncement(updated);
+      addToast('success', 'Announcement updated.');
+    } catch (err: any) {
+      addToast('error', err.message || 'Failed to update announcement');
+    }
   };
 
   const handleUpdateCutoff = async (cutoffData: Partial<CutoffSettings>) => {
-    const updated = await api.updateCutoff(cutoffData);
-    setCutoff(updated);
+    try {
+      const updated = await api.updateCutoff(cutoffData);
+      setCutoff(updated);
+      addToast('success', 'Cutoff rules updated.');
+    } catch (err: any) {
+      addToast('error', err.message || 'Failed to update cutoff');
+    }
   };
 
   // If not authenticated, render Login Page
@@ -322,20 +396,20 @@ export default function App() {
                 </p>
               </div>
 
-              {/* Summary Cards */}
               <SummaryCards
                 appointments={appointments}
                 doctors={doctors}
                 onNavigateTab={(tab) => setActiveTab(tab)}
               />
 
-              {/* Quick Appointments Management View */}
               <AppointmentsSection
                 appointments={appointments}
                 doctors={doctors}
                 services={services}
                 onStatusChange={handleStatusChange}
                 onCreateAppointment={handleCreateAppointment}
+                onRefresh={loadAppointments}
+                cutoffTime={cutoff.cutoffTime}
               />
             </div>
           )}
@@ -348,6 +422,8 @@ export default function App() {
               services={services}
               onStatusChange={handleStatusChange}
               onCreateAppointment={handleCreateAppointment}
+              onRefresh={loadAppointments}
+              cutoffTime={cutoff.cutoffTime}
             />
           )}
 
@@ -370,15 +446,16 @@ export default function App() {
               onUpdateDoctor={handleUpdateDoctor}
               onDeleteDoctor={handleDeleteDoctor}
               onErrorToast={(msg) => addToast('error', msg)}
+              onRefresh={loadClinicData}
             />
           )}
 
           {/* Settings Tab */}
           {activeTab === 'settings' && (
             <ClinicSettingsSection
-              doctors={doctors}
-              availabilities={availabilities}
-              blockedDates={blockedDates}
+              doctors={doctors || []}
+              availabilities={availabilities || []}
+              blockedDates={blockedDates || []}
               announcement={announcement}
               cutoff={cutoff}
               onUpdateAvailability={handleUpdateAvailability}
@@ -397,7 +474,6 @@ export default function App() {
         </>
       )}
 
-      {/* Global Toast Container */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </AdminLayout>
   );

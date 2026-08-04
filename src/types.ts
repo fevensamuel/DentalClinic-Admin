@@ -24,22 +24,51 @@ export interface Service {
   id: string;
   title: string;
   category: string;
-  duration: number; // in minutes
-  price: number; // in USD
+  duration: string; // "45 mins", "1 hour"
+  price: string; // "1500 ETB"
   promotionActive: boolean;
   discountPercent: number; // 0-100
   description: string;
 }
 
+// Helper to extract number from string (for calculations only)
+export function extractNumber(value: string | number | null | undefined): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const match = value.match(/-?\d+(?:\.\d+)?/);
+    return match ? Number(match[0]) : 0;
+  }
+  return 0;
+}
+
+// Helper to format service from backend (with proper types)
+export function normalizeService(service: Partial<Service>): Service {
+  return {
+    id: service.id ?? '',
+    title: service.title ?? '',
+    category: service.category ?? '',
+    duration: service.duration?.toString() ?? '', // Keep as string
+    price: service.price?.toString() ?? '',       // Keep as string
+    promotionActive: Boolean(service.promotionActive),
+    discountPercent: typeof service.discountPercent === 'number' 
+      ? service.discountPercent 
+      : extractNumber(service.discountPercent),
+    description: service.description ?? '',
+  };
+}
+
 export interface Doctor {
-  id: string;
+id: string;
   name: string;
-  specialty: string;
-  bio: string;
-  avatar: string;
-  email: string;
-  phone: string;
+  title?: string;        // ✅ Backend uses 'title' for specialty
+  specialty?: string;    // ✅ Keep for compatibility
+  bio?: string;
+  imageUrl?: string;
+  email?: string;
+  phone?: string;
   isFeatured: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface DateAvailability {
