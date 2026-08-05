@@ -94,7 +94,7 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  // ✅ Get available doctor IDs for the selected date
+  // Get available doctor IDs for the selected date
   const getAvailableDoctorIds = (date: string): string[] => {
     const avail = availabilities.find((a) => a.date === date);
     return avail?.doctorIds || [];
@@ -111,15 +111,15 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
     status: 'Confirmed' as AppointmentStatus,
   });
 
-  // ✅ Filter available doctors for the selected date
+  // Filter available doctors for the selected date
   const availableDoctorsForDate = doctors.filter((doc) =>
     getAvailableDoctorIds(formData.date).includes(doc.id)
   );
 
-  // ✅ If no available doctors for the date, show all doctors (fallback)
+  // If no available doctors for the date, show all doctors (fallback)
   const dentistOptions = availableDoctorsForDate.length > 0 ? availableDoctorsForDate : doctors;
 
-  // ✅ Fetch slots when date or dentist changes
+  // Fetch slots when date or dentist changes
   useEffect(() => {
     const fetchSlots = async () => {
       if (!formData.date) {
@@ -263,7 +263,6 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
     }
   };
 
-  // ✅ FIXED: Full appointment update with all fields
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -283,7 +282,6 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
         await onStatusChange(editingAppointment.id, formData.status);
       }
 
-      // For other fields, we refresh after status update
       if (onRefresh) {
         await onRefresh();
       }
@@ -1018,4 +1016,4 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
       )}
     </div>
   );
-}
+};
