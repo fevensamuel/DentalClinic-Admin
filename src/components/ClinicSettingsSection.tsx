@@ -1,24 +1,19 @@
-// ClinicSettingsSection.tsx - ✅ FIXED: Remove duplicate toast
+// ClinicSettingsSection.tsx - ✅ FIXED: Removed announcement tab
 import React, { useState } from 'react';
 import {
   Calendar,
   Clock,
-  Megaphone,
   Ban,
   Save,
   Trash2,
-  CheckCircle2,
   Plus,
   Bell,
   AlertCircle,
-  Info,
-  ShieldAlert,
 } from 'lucide-react';
 import {
   Doctor,
   DateAvailability,
   BlockedDate,
-  Announcement,
   CutoffSettings,
 } from '../types';
 
@@ -26,13 +21,11 @@ interface ClinicSettingsSectionProps {
   doctors: Doctor[];
   availabilities: DateAvailability[];
   blockedDates: BlockedDate[];
-  announcement: Announcement;
   cutoff: CutoffSettings;
   onUpdateAvailability: (date: string, doctorIds: string[]) => Promise<void>;
   onClearAvailability: (date: string) => Promise<void>;
   onAddBlockedDate: (date: string, reason: string) => Promise<void>;
   onRemoveBlockedDate: (date: string) => Promise<void>;
-  onUpdateAnnouncement: (announcementData: Partial<Announcement>) => Promise<void>;
   onUpdateCutoff: (cutoffData: Partial<CutoffSettings>) => Promise<void>;
   onSuccessToast: (msg: string) => void;
   onErrorToast: (msg: string) => void;
@@ -42,13 +35,11 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
   doctors = [],
   availabilities = [],
   blockedDates = [],
-  announcement,
   cutoff,
   onUpdateAvailability,
   onClearAvailability,
   onAddBlockedDate,
   onRemoveBlockedDate,
-  onUpdateAnnouncement,
   onUpdateCutoff,
   onSuccessToast,
   onErrorToast,
@@ -62,8 +53,8 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
           Clinic Operating Settings
         </h2>
         <p className="text-sm text-slate-600">No doctors available. Please refresh or try again.</p>
-        <button 
-          onClick={() => window.location.reload()} 
+        <button
+          onClick={() => window.location.reload()}
           className="mt-4 px-4 py-2 bg-cyan-600 text-white rounded-lg text-xs hover:bg-cyan-700"
         >
           Refresh Page
@@ -72,7 +63,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     );
   }
 
-  const [activeTab, setActiveTab] = useState<'availability' | 'blocked' | 'announcement' | 'cutoff'>(
+  const [activeTab, setActiveTab] = useState<'availability' | 'blocked' | 'cutoff'>(
     'availability'
   );
 
@@ -90,13 +81,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
   const [newBlockedReason, setNewBlockedReason] = useState('');
   const [savingBlocked, setSavingBlocked] = useState(false);
 
-  // 3. Announcement State
-  const [announcementText, setAnnouncementText] = useState(announcement?.text || '');
-  const [announcementActive, setAnnouncementActive] = useState(announcement?.active || false);
-  const [announcementType, setAnnouncementType] = useState(announcement?.bannerType || 'info');
-  const [savingAnnounce, setSavingAnnounce] = useState(false);
-
-  // 4. Cutoff State
+  // 3. Cutoff State
   const [cutoffTime, setCutoffTime] = useState(cutoff?.cutoffTime || '17:00');
   const [sameDayAllowed, setSameDayAllowed] = useState(cutoff?.sameDayBookingAllowed ?? true);
   const [minNoticeHours, setMinNoticeHours] = useState(cutoff?.minNoticeHours || 2);
@@ -109,7 +94,6 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     );
   };
 
-  // ✅ FIXED: Removed duplicate toast - App.tsx handles it
   const handleSaveAvailability = async () => {
     if (!selectedAvailDate) {
       onErrorToast('Please select a date first.');
@@ -118,7 +102,6 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     setSavingAvail(true);
     try {
       await onUpdateAvailability(selectedAvailDate, selectedDoctorIds);
-      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
     } catch (err: any) {
       onErrorToast(err.message || 'Failed to save availability');
     } finally {
@@ -130,7 +113,6 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     setSavingAvail(true);
     try {
       await onClearAvailability(dateToClear);
-      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
     } catch (err: any) {
       onErrorToast(err.message || 'Failed to clear availability');
     } finally {
@@ -138,7 +120,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     }
   };
 
-  // Blocked Date handlers - ✅ REMOVED duplicate toasts
+  // Blocked Date handlers
   const handleAddBlockedDate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBlockedDate) {
@@ -148,7 +130,6 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
     setSavingBlocked(true);
     try {
       await onAddBlockedDate(newBlockedDate, newBlockedReason || 'Clinic Closed');
-      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
       setNewBlockedDate('');
       setNewBlockedReason('');
     } catch (err: any) {
@@ -161,31 +142,12 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
   const handleRemoveBlockedDate = async (date: string) => {
     try {
       await onRemoveBlockedDate(date);
-      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
     } catch (err: any) {
       onErrorToast(err.message || 'Failed to unblock date');
     }
   };
 
-  // Announcement handler - ✅ REMOVED duplicate toasts
-  const handleSaveAnnouncement = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingAnnounce(true);
-    try {
-      await onUpdateAnnouncement({
-        text: announcementText,
-        active: announcementActive,
-        bannerType: announcementType as any,
-      });
-      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
-    } catch (err: any) {
-      onErrorToast(err.message || 'Failed to update announcement');
-    } finally {
-      setSavingAnnounce(false);
-    }
-  };
-
-  // Cutoff handler - ✅ REMOVED duplicate toasts
+  // Cutoff handler
   const handleSaveCutoff = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingCutoff(true);
@@ -195,7 +157,6 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
         sameDayBookingAllowed: sameDayAllowed,
         minNoticeHours: Number(minNoticeHours),
       });
-      // ✅ REMOVED: onSuccessToast - App.tsx already shows it
     } catch (err: any) {
       onErrorToast(err.message || 'Failed to update cutoff settings');
     } finally {
@@ -212,7 +173,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
           Clinic Operating Settings
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Configure doctor availability schedules, clinic holiday closures, banner announcements, and daily booking cutoff times.
+          Configure doctor availability schedules, clinic holiday closures, and daily booking cutoff times.
         </p>
       </div>
 
@@ -242,19 +203,6 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
         >
           <Ban className="w-4 h-4" />
           Blocked Dates & Closures ({blockedDates.length})
-        </button>
-
-        <button
-          key="announcement-tab"
-          onClick={() => setActiveTab('announcement')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-            activeTab === 'announcement'
-              ? 'bg-cyan-600 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-          }`}
-        >
-          <Megaphone className="w-4 h-4" />
-          Announcement Banner
         </button>
 
         <button
@@ -323,7 +271,13 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
                             />
                           ) : (
                             <div className="w-7 h-7 rounded-lg bg-[#0EA5E9] text-white font-extrabold text-[10px] flex items-center justify-center shrink-0 border border-slate-200">
-                              {doc.name.replace(/^Dr\.\s*/i, '').split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase() || 'DR'}
+                              {doc.name
+                                .replace(/^Dr\.\s*/i, '')
+                                .split(' ')
+                                .map((n) => n[0])
+                                .join('')
+                                .substring(0, 2)
+                                .toUpperCase() || 'DR'}
                             </div>
                           )}
                           <div>
@@ -501,109 +455,7 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
         </div>
       )}
 
-      {/* TAB 3: ANNOUNCEMENT BANNER */}
-      {activeTab === 'announcement' && (
-        <div className="max-w-2xl bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Megaphone className="w-4 h-4 text-cyan-600" />
-              Homepage Announcement Banner
-            </h3>
-            <span className="text-xs text-slate-400 font-mono">
-              Last updated: {announcement?.updatedAt ? new Date(announcement.updatedAt).toLocaleDateString() : 'N/A'}
-            </span>
-          </div>
-
-          <form onSubmit={handleSaveAnnouncement} className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
-              <div>
-                <span className="text-xs font-semibold text-slate-800">Show Announcement Banner</span>
-                <p className="text-[11px] text-slate-500">
-                  Toggle whether the banner is visible to patients visiting your clinic website.
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                checked={announcementActive}
-                onChange={(e) => setAnnouncementActive(e.target.checked)}
-                className="w-5 h-5 text-cyan-600 rounded accent-cyan-600 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
-                Banner Tone / Style
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { id: 'info', label: 'Info (Cyan)', color: 'border-cyan-600 text-cyan-700 bg-cyan-50' },
-                  { id: 'warning', label: 'Warning (Amber)', color: 'border-amber-600 text-amber-800 bg-amber-50' },
-                  { id: 'success', label: 'Promo (Green)', color: 'border-emerald-600 text-emerald-800 bg-emerald-50' },
-                  { id: 'urgent', label: 'Urgent (Rose)', color: 'border-rose-600 text-rose-800 bg-rose-50' },
-                ].map((type) => (
-                  <button
-                    key={type.id}
-                    type="button"
-                    onClick={() => setAnnouncementType(type.id as any)}
-                    className={`py-2 px-2 rounded-lg text-xs font-semibold border text-center transition-all cursor-pointer ${
-                      announcementType === type.id
-                        ? `${type.color} ring-1 ring-cyan-600`
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {type.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
-                Announcement Text Content
-              </label>
-              <textarea
-                rows={3}
-                required
-                value={announcementText}
-                onChange={(e) => setAnnouncementText(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs focus:outline-none focus:border-cyan-600 focus:ring-1 focus:ring-cyan-600"
-              />
-            </div>
-
-            {/* Live Preview */}
-            <div>
-              <span className="block text-[11px] font-semibold text-slate-500 uppercase mb-2">
-                Live Public Website Preview
-              </span>
-              <div
-                className={`p-4 rounded-lg border flex items-center gap-3 text-xs font-medium ${
-                  announcementType === 'warning'
-                    ? 'bg-amber-50 border-amber-200 text-amber-900'
-                    : announcementType === 'success'
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                    : announcementType === 'urgent'
-                    ? 'bg-rose-50 border-rose-200 text-rose-900'
-                    : 'bg-cyan-50 border-cyan-200 text-cyan-900'
-                }`}
-              >
-                <Bell className="w-4 h-4 shrink-0 text-cyan-700" />
-                <span>{announcementText || 'Your announcement banner will appear here.'}</span>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={savingAnnounce}
-              className="py-2.5 px-5 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg text-xs shadow-xs transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {savingAnnounce ? 'Saving...' : 'Save Announcement Banner'}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* TAB 4: CUTOFF TIME & RULES */}
+      {/* TAB 3: CUTOFF TIME & RULES */}
       {activeTab === 'cutoff' && (
         <div className="max-w-2xl bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-6">
           <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-4">
@@ -672,4 +524,4 @@ export const ClinicSettingsSection: React.FC<ClinicSettingsSectionProps> = ({
       )}
     </div>
   );
-};
+}

@@ -16,7 +16,6 @@ import {
   Doctor,
   DateAvailability,
   BlockedDate,
-  Announcement,
   CutoffSettings,
   User,
   AppointmentStatus,
@@ -47,12 +46,6 @@ export default function App() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [availabilities, setAvailabilities] = useState<DateAvailability[]>([]);
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
-  const [announcement, setAnnouncement] = useState<Announcement>({
-    text: '',
-    active: false,
-    bannerType: 'info',
-    updatedAt: new Date().toISOString(),
-  });
   const [cutoff, setCutoff] = useState<CutoffSettings>({
     cutoffTime: '17:00',
     sameDayBookingAllowed: true,
@@ -86,42 +79,31 @@ export default function App() {
     try {
       setLoadingConfig(true);
       const config = await api.getConfig();
-      
+
       setAppointments(config.appointments || []);
       setServices((config.services || []).map(normalizeService));
-      
-      // ✅ Map doctors properly - ensure imageUrl is preserved
+
       setDoctors((config.doctors || []).map((d: any) => ({
         ...d,
         id: d.id || d._id,
         imageUrl: d.imageUrl || '',
         specialty: d.specialty || d.title || '',
       })));
-      
-      // ✅ Convert availability object to array
+
       const availabilityArray = Object.entries(config.availability || {}).map(([date, doctorIds]) => ({
         date,
-        doctorIds: Array.isArray(doctorIds) ? doctorIds : []
+        doctorIds: Array.isArray(doctorIds) ? doctorIds : [],
       }));
       setAvailabilities(availabilityArray);
-      
-      // ✅ Ensure blockedDates is array
+
       setBlockedDates(Array.isArray(config.blockedDates) ? config.blockedDates : []);
-      
-      if (config.announcement) {
-        setAnnouncement(prev => ({ 
-          ...prev, 
-          text: config.announcement || '' 
-        }));
-      }
-      
+
       if (config.bookingCutoffTime) {
-        setCutoff(prev => ({ 
-          ...prev, 
-          cutoffTime: config.bookingCutoffTime || '17:00' 
+        setCutoff((prev) => ({
+          ...prev,
+          cutoffTime: config.bookingCutoffTime || '17:00',
         }));
       }
-      
     } catch (err: any) {
       console.error('Failed to load clinic config:', err);
       if (err.message?.includes('Unauthorized')) {
@@ -135,7 +117,6 @@ export default function App() {
     }
   }, [addToast]);
 
-  // Load services separately (for refreshing after updates)
   const loadServices = useCallback(async () => {
     try {
       const freshServices = await api.getServices();
@@ -145,7 +126,6 @@ export default function App() {
     }
   }, []);
 
-  // Load appointments separately (for refreshing after updates)
   const loadAppointments = useCallback(async () => {
     try {
       const freshAppointments = await api.getAppointments();
@@ -155,7 +135,6 @@ export default function App() {
     }
   }, []);
 
-  // Load availabilities separately
   const loadAvailabilities = useCallback(async () => {
     try {
       const freshAvailabilities = await api.getAvailabilities();
@@ -337,16 +316,6 @@ export default function App() {
     }
   };
 
-  const handleUpdateAnnouncement = async (announcementData: Partial<Announcement>) => {
-    try {
-      const updated = await api.updateAnnouncement(announcementData);
-      setAnnouncement(updated);
-      addToast('success', 'Announcement updated.');
-    } catch (err: any) {
-      addToast('error', err.message || 'Failed to update announcement');
-    }
-  };
-
   const handleUpdateCutoff = async (cutoffData: Partial<CutoffSettings>) => {
     try {
       const updated = await api.updateCutoff(cutoffData);
@@ -406,6 +375,7 @@ export default function App() {
                 appointments={appointments}
                 doctors={doctors}
                 services={services}
+                availabilities={availabilities}
                 onStatusChange={handleStatusChange}
                 onCreateAppointment={handleCreateAppointment}
                 onRefresh={loadAppointments}
@@ -420,6 +390,7 @@ export default function App() {
               appointments={appointments}
               doctors={doctors}
               services={services}
+              availabilities={availabilities}
               onStatusChange={handleStatusChange}
               onCreateAppointment={handleCreateAppointment}
               onRefresh={loadAppointments}
@@ -456,13 +427,11 @@ export default function App() {
               doctors={doctors || []}
               availabilities={availabilities || []}
               blockedDates={blockedDates || []}
-              announcement={announcement}
               cutoff={cutoff}
               onUpdateAvailability={handleUpdateAvailability}
               onClearAvailability={handleClearAvailability}
               onAddBlockedDate={handleAddBlockedDate}
               onRemoveBlockedDate={handleRemoveBlockedDate}
-              onUpdateAnnouncement={handleUpdateAnnouncement}
               onUpdateCutoff={handleUpdateCutoff}
               onSuccessToast={(msg) => addToast('success', msg)}
               onErrorToast={(msg) => addToast('error', msg)}

@@ -16,13 +16,14 @@ import {
   Edit2,
   RefreshCw,
 } from 'lucide-react';
-import { Appointment, AppointmentStatus, Doctor, Service } from '../types';
+import { Appointment, AppointmentStatus, Doctor, Service, DateAvailability } from '../types';
 import { api } from '../lib/api';
 
 interface AppointmentsSectionProps {
   appointments: Appointment[];
   doctors: Doctor[];
   services: Service[];
+  availabilities: DateAvailability[];
   onStatusChange: (id: string, newStatus: AppointmentStatus) => Promise<void>;
   onCreateAppointment: (data: Partial<Appointment>) => Promise<void>;
   onRefresh?: () => Promise<void>;
@@ -74,6 +75,7 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
   appointments,
   doctors,
   services,
+  availabilities,
   onStatusChange,
   onCreateAppointment,
   onRefresh,
@@ -92,6 +94,12 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
+  // ✅ Get available doctor IDs for the selected date
+  const getAvailableDoctorIds = (date: string): string[] => {
+    const avail = availabilities.find((a) => a.date === date);
+    return avail?.doctorIds || [];
+  };
+
   const [formData, setFormData] = useState({
     patientName: '',
     patientPhone: '',
@@ -102,6 +110,14 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
     time: '09:00',
     status: 'Confirmed' as AppointmentStatus,
   });
+
+  // ✅ Filter available doctors for the selected date
+  const availableDoctorsForDate = doctors.filter((doc) =>
+    getAvailableDoctorIds(formData.date).includes(doc.id)
+  );
+
+  // ✅ If no available doctors for the date, show all doctors (fallback)
+  const dentistOptions = availableDoctorsForDate.length > 0 ? availableDoctorsForDate : doctors;
 
   // ✅ Fetch slots when date or dentist changes
   useEffect(() => {
@@ -214,15 +230,14 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
     }
 
     try {
-      // ✅ Match backend expected field names
       const appointmentData = {
         patientName: formData.patientName,
         patientPhone: formData.patientPhone,
         patientEmail: formData.patientEmail || '',
         serviceTitle: formData.serviceTitle,
         dentistId: formData.dentistId,
-        date: formData.date,        // ✅ Backend expects 'date'
-        time: formData.time,        // ✅ Backend expects 'time'
+        date: formData.date,
+        time: formData.time,
         status: formData.status || 'Confirmed',
       };
       
@@ -261,39 +276,14 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
         return;
       }
 
-      // ✅ Find the dentist name from ID
       const selectedDentist = doctors.find(d => d.id === formData.dentistId);
       const dentistName = selectedDentist?.name || editingAppointment.dentist || editingAppointment.dentistName || '';
 
-      // ✅ Prepare update data matching backend expectations
-      const updateData = {
-        patientName: formData.patientName,
-        patientPhone: formData.patientPhone,
-        patientEmail: formData.patientEmail || '',
-        serviceTitle: formData.serviceTitle,
-        dentistId: formData.dentistId,
-        dentistName: dentistName,
-        date: formData.date,
-        time: formData.time,
-        status: formData.status,
-      };
-
-      // ✅ First update status if changed
       if (formData.status !== editingAppointment.status) {
         await onStatusChange(editingAppointment.id, formData.status);
       }
 
-      // ✅ Then update the rest of the appointment data
-      // Since the backend doesn't have a full update endpoint, we need to use the admin appointment update
-      // We'll call the create endpoint with the same ID for update
-      // Actually, we need to use a proper update endpoint. Let's use the admin appointment creation with ID.
-      
-      // For now, we'll refresh the data after status update
-      // The status change already updates the appointment
-      // For other fields, we need a proper update endpoint
-      
-      // ✅ TODO: Add full update endpoint in backend
-      // For now, we'll just update status and refresh
+      // For other fields, we refresh after status update
       if (onRefresh) {
         await onRefresh();
       }
@@ -314,7 +304,6 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
   const handleOpenEditModal = (appointment: Appointment) => {
     setEditingAppointment(appointment);
     
-    // ✅ Find dentist ID from name
     const dentistName = appointment.dentist || appointment.dentistName || '';
     const dentist = doctors.find(d => 
       d.name === dentistName || 
@@ -718,7 +707,7 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
                     onChange={(e) => setFormData({ ...formData, dentistId: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs focus:outline-none focus:border-cyan-500"
                   >
-                    {doctors.map((doc) => (
+                    {dentistOptions.map((doc) => (
                       <option key={doc.id} value={doc.id}>
                         {doc.name} ({doc.specialty || doc.title})
                       </option>
@@ -929,7 +918,7 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
                     onChange={(e) => setFormData({ ...formData, dentistId: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs focus:outline-none focus:border-cyan-500"
                   >
-                    {doctors.map((doc) => (
+                    {dentistOptions.map((doc) => (
                       <option key={doc.id} value={doc.id}>
                         {doc.name} ({doc.specialty || doc.title})
                       </option>
@@ -1029,4 +1018,4 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
       )}
     </div>
   );
-};
+}
