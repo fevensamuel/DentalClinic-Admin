@@ -44,7 +44,7 @@ export const DoctorsSection: React.FC<DoctorsSectionProps> = ({
 
   const [formData, setFormData] = useState({
     name: '',
-    title: '',        // ✅ Changed from 'specialty' to 'title'
+    title: '',
     bio: '',
     email: '',
     phone: '',
@@ -103,7 +103,7 @@ export const DoctorsSection: React.FC<DoctorsSectionProps> = ({
     setEditingDoctor(doctor);
     setFormData({
       name: doctor.name || '',
-      title: doctor.title || doctor.specialty || '',  // ✅ Use title or fallback to specialty
+      title: doctor.title || doctor.specialty || '',
       bio: doctor.bio || '',
       email: doctor.email || '',
       phone: doctor.phone || '',
@@ -128,10 +128,30 @@ export const DoctorsSection: React.FC<DoctorsSectionProps> = ({
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
-      formDataToSend.append('title', formData.title || '');  // ✅ Send as 'title'
+      formDataToSend.append('title', formData.title || '');
       formDataToSend.append('bio', formData.bio || '');
-      formDataToSend.append('email', formData.email || '');   // ✅ Send email
-      formDataToSend.append('phone', formData.phone || '');   // ✅ Send phone
+      formDataToSend.append('email', formData.email || '');
+      formDataToSend.append('phone', formData.phone || '');
+      
+      // ✅ Don't send isFeatured as a field - let the backend handle it
+      // The backend will auto-feature based on the 3-max rule
+      // We'll handle the check here before submitting
+      
+      // ✅ Check featured count before submitting
+      if (formData.isFeatured) {
+        const featuredCount = doctors.filter(d => d.isFeatured).length;
+        // If editing, exclude the current doctor from count
+        let currentFeaturedCount = featuredCount;
+        if (editingDoctor && editingDoctor.isFeatured) {
+          currentFeaturedCount = featuredCount - 1;
+        }
+        if (currentFeaturedCount >= 3) {
+          onErrorToast('Maximum of 3 featured doctors allowed. Please unfeature another doctor first.');
+          setSubmitting(false);
+          return;
+        }
+      }
+      
       formDataToSend.append('isFeatured', String(formData.isFeatured));
 
       if (imageFile) {
@@ -161,14 +181,19 @@ export const DoctorsSection: React.FC<DoctorsSectionProps> = ({
       onErrorToast('Cannot toggle featured: Doctor ID is missing');
       return;
     }
+    
     const newFeatured = !doctor.isFeatured;
     const featuredCount = doctors.filter(d => d && d.isFeatured).length;
-    if (newFeatured && featuredCount >= 3 && !doctor.isFeatured) {
-      onErrorToast('Maximum of 3 featured doctors allowed');
+    
+    // ✅ Check if trying to feature and count is already at 3
+    if (newFeatured && featuredCount >= 3) {
+      onErrorToast('Maximum of 3 featured doctors allowed. Please unfeature another doctor first.');
       return;
     }
+    
     try {
       await onToggleFeatured(doctor.id, newFeatured);
+      // ✅ Immediately refresh the list
       if (onRefresh) {
         await onRefresh();
       }
@@ -220,7 +245,6 @@ export const DoctorsSection: React.FC<DoctorsSectionProps> = ({
     return '';
   };
 
-  // ✅ Display title with fallback to specialty
   const getDisplayTitle = (doctor: Doctor) => {
     return doctor.title || doctor.specialty || 'Specialist';
   };
